@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive 3D Buddhist Cosmology Gameplay Map v4.3 (Evolved)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r180/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/gsap.min.js"></script>
+
+    <!-- Firebase SDK Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, getDoc, runTransaction } from "https://www.gstatic.com/firebasejs/12.4.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/12.4.1/firebase-firestore.js";
+        window.firebaseImports = { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, setDoc, onSnapshot, getDoc, runTransaction, setLogLevel };
+    </script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        body { margin: 0; overflow: hidden; background-color: #020617; font-family: 'Inter', sans-serif; color: #e2e8f0; touch-action: none; }
+        canvas { display: block; outline: none; } /* Accessibility: Prevent default focus outline on canvas */
+        .panel { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border-radius: 12px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37); border: 1px solid rgba(255, 255, 255, 0.18); transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
+        #info-panel { max-height: 85vh; overflow-y: auto; transform: translateX(100%); opacity: 0; pointer-events: none; }
+        #info-panel.visible { transform: translateX(0); opacity: 1; pointer-events: auto; }
+        .gemini-source { font-size: 0.75rem; color: #64748b; display: block; margin-top: 8px; }
+        .action-button { transition: transform 0.1s, box-shadow 0.2s; }
+        .action-button:hover:not(:disabled) { transform: scale(1.03); box-shadow: 0 0 20px rgba(59, 130, 246, 0.5); }
+        .action-button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+        .action-button:focus { outline: 2px solid #60a5fa; outline-offset: 2px; } /* Accessibility: Focus indicator */
+        .loading-spinner { border: 3px solid rgba(255, 255, 255, 0.2); border-top: 3px solid #60a5fa; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* Accessibility: High contrast mode support */
+        @media (prefers-contrast: high) { .panel { border: 2px solid #ffffff; } .action-button:focus { outline: 3px solid #ffffff; } }
+        /* Reduced motion for accessibility */
+        @media (prefers-reduced-motion: reduce) { * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
+    </style>
+</head>
+<body>
+
+    <div id="ui-container" class="fixed inset-0 pointer-events-none p-4 md:p-6">
+        <div id="info-panel" class="panel fixed top-4 right-4 p-5 md:p-6 w-11/12 md:max-w-md" role="region" aria-label="Realm Information Panel" aria-hidden="true">
+            <h2 id="realm-name" class="text-2xl font-bold mb-2 text-blue-300">Select a Realm</h2>
+            <p id="realm-description" class="text-sm text-slate-300 leading-relaxed">Orbit the map by dragging. Zoom with your mouse wheel or by pinching. Tap a sphere to explore its nature.</p>
+        </div>
+        <div id="control-panel" class="panel fixed bottom-4 left-1/2 -translate-x-1/2 p-4 w-11/12 md:w-auto md:max-w-6xl pointer-events-auto" role="region" aria-label="Control Panel">
+            <div class="flex flex-col md:flex-row items-center gap-4 md:gap-6 flex-wrap">
+                <div class="text-center md:text-left">
+                    <p class="text-xs text-slate-400">CURRENT REALM</p>
+                    <p class="text-lg font-bold text-indigo-300" id="realm-status" aria-live="polite">Initializing...</p>
+                    <p class="text-xs mt-1 text-slate-400">KARMA: <span id="karma-status" class="font-bold text-pink-400" aria-live="polite">0</span></p>
+                    <p class="text-xs text-slate-500 font-mono" id="user-id-display">Connecting...</p>
+                </div>
+                <button id="path-button" class="action-button w-full md:w-auto p-3 px-6 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2" disabled aria-describedby="path-desc">
+                    <div id="path-spinner" class="loading-spinner hidden"></div>
+                    <span id="path-button-text">✨ Get Personal Path</span>
+                </button>
+                <p id="path-desc" class="sr-only">Retrieve personalized Buddhist guidance based on your current karma and realm.</p>
+                <button id="dilemma-button" class="action-button w-full md:w-auto p-3 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2" disabled aria-describedby="dilemma-desc">
+                    <div id="dilemma-spinner" class="loading-spinner hidden"></div>
+                    <span id="dilemma-button-text">Face a Karmic Dilemma</span>
+                </button>
+                <p id="dilemma-desc" class="sr-only">Encounter a moral scenario to influence your karmic path.</p>
+                <button id="history-button" class="action-button w-full md:w-auto p-3 px-6 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2" disabled aria-describedby="history-desc">
+                    <span>📜 View History</span>
+                </button>
+                <p id="history-desc" class="sr-only">Review your past karmic decisions and rebirths.</p>
+                <button id="reset-button" class="action-button w-full md:w-auto p-3 px-6 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2" disabled aria-describedby="reset-desc">
+                    <span>🔄 New Journey</span>
+                </button>
+                <p id="reset-desc" class="sr-only">Reset your karma and begin a new exploration.</p>
+            </div>
+        </div>
+        <div id="dilemma-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="dilemma-title">
+            <div class="panel p-6 w-full max-w-lg">
+                <h3 id="dilemma-title" class="text-xl font-bold mb-2 text-blue-300">A Dilemma Arises...</h3>
+                <p id="dilemma-text" class="text-sm mb-4 text-slate-300">Generating scenario...</p>
+                <div id="dilemma-choices" class="space-y-3" role="radiogroup" aria-labelledby="dilemma-title"></div>
+                <button id="close-dilemma-modal-button" class="mt-4 w-full p-2 bg-slate-700 hover:bg-slate-600 rounded-lg" aria-label="Close dilemma modal without choosing">Ponder</button>
+            </div>
+        </div>
+        <div id="insight-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="insight-title">
+            <div class="panel p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto">
+                <h3 id="insight-title" class="text-xl font-bold mb-3 text-purple-300">✨ Cosmic Insight</h3>
+                <div id="insight-content" class="text-sm space-y-4 text-slate-300 leading-relaxed whitespace-pre-wrap"></div>
+                <button id="close-insight-modal-button" class="mt-5 w-full p-2 bg-slate-700 hover:bg-slate-600 rounded-lg" aria-label="Close insight modal">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. GLOBALS, CONFIG & COSMOLOGY ---
+        const COSMOLOGY = [ { name: "Arūpadhātu (Formless Realm)", description: "The four highest heavenly planes.", color: 0x9c41ff, radius: 10, position: new THREE.Vector3(0, 100, 0) },{ name: "Rūpadhātu (Form Realm)", description: "The heavens where beings possess subtle bodies.", color: 0x4169e1, radius: 15, position: new THREE.Vector3(0, 50, 0) },{ name: "Kāmadhātu (Desire Realm)", description: "Planes characterized by sensory desires.", color: 0xffa500, radius: 20, position: new THREE.Vector3(0, 0, 0) },{ name: "Devas (Gods)", description: "Highest destination in the Desire Realm.", color: 0xffff00, radius: 5, position: new THREE.Vector3(30, 0, 0) },{ name: "Asuras (Titans/Demigods)", description: "Beings driven by jealousy and contention.", color: 0xff4500, radius: 5, position: new THREE.Vector3(-30, 0, 0) },{ name: "Humans (Jambu-dvīpa)", description: "Our realm, best for enlightenment.", color: 0x3cb371, radius: 5, position: new THREE.Vector3(0, 0, 30) },{ name: "Animals", description: "Existence governed by instinct.", color: 0x8b4513, radius: 5, position: new THREE.Vector3(0, 0, -30) },{ name: "Preta (Hungry Ghosts)", description: "Tortured by insatiable cravings.", color: 0x708090, radius: 5, position: new THREE.Vector3(0, -30, 0) },{ name: "Narakas (Hell Beings)", description: "Characterized by extreme suffering.", color: 0x800000, radius: 5, position: new THREE.Vector3(0, -60, 0) },{ name: "Mount Meru (Axis Mundi)", description: "The central world-mountain.", color: 0x888888, radius: 10, isMeru: true } ];
+        const API_KEY = ""; // Note: Set your Gemini API key here for functionality
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+        let db, auth, userId = 'anonymous', rebirthState = { karmaScore: 0, rebirthRealm: 'Humans (Jambu-dvīpa)', karmaHistory: [] };
+        let scene, camera, renderer, raycaster, mouse, realms = [], controls;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // --- 2. APP CONTROLLER (STATE MACHINE) ---
+        const AppController = {
+            _currentState: 'PENDING',
+            _subscribers: [],
+            setState(newState) {
+                if (this._currentState === newState) return;
+                console.log(`%c[App State]: ${this._currentState} -> ${newState}`, 'color: #7c3aed; font-weight: bold;');
+                this._currentState = newState;
+                this._subscribers.forEach(callback => callback(newState));
+            },
+            onChange(callback) { this._subscribers.push(callback); },
+            is(state) { return this._currentState === state; }
+        };
+        window.AppController = AppController;
+
+        // --- 3. INITIALIZATION & LIFECYCLE ---
+        window.onload = function() {
+            AppController.setState('INITIALIZING');
+            init(); 
+            setupFirebase(); 
+            setupStateSubscribers(); 
+            animate();
+        };
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x020617, 0.005);
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 100);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.domElement.tabIndex = 0; // Accessibility: Make canvas focusable
+            renderer.domElement.setAttribute('aria-label', 'Interactive 3D cosmology map. Use mouse or touch to navigate.');
+            document.body.insertBefore(renderer.domElement, document.getElementById('ui-container'));
+            const ambient = new THREE.AmbientLight(0x404040, 0.5); // Reduced intensity for performance
+            scene.add(ambient);
+            const sun = new THREE.DirectionalLight(0xffffff, 1); // Reduced for performance
+            sun.position.set(50, 50, 50);
+            scene.add(sun);
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+            controls = setupEnhancedOrbitControls(camera, renderer.domElement);
+            scene.add(controls.target);
+            createCosmology();
+            createStarfield();
+            window.addEventListener('resize', onWindowResize, false);
+            renderer.domElement.addEventListener('click', onInteract, false);
+            renderer.domElement.addEventListener('touchend', onInteract, false);
+            // Accessibility: Keyboard navigation stub (expandable)
+            renderer.domElement.addEventListener('keydown', onKeyboardInteract);
+        }
+
+        function onKeyboardInteract(event) {
+            // Basic keyboard support: Arrow keys for rotation, +/- for zoom
+            const { key } = event;
+            if (key === 'ArrowLeft') controls.target.rotation.y += 0.05;
+            if (key === 'ArrowRight') controls.target.rotation.y -= 0.05;
+            if (key === 'ArrowUp') controls.target.rotation.x -= 0.05;
+            if (key === 'ArrowDown') controls.target.rotation.x += 0.05;
+            if (key === '+' || key === '=') controls.radius = Math.max(40, controls.radius - 5);
+            if (key === '-' || key === '_') controls.radius = Math.min(300, controls.radius + 5);
+            event.preventDefault();
+        }
+
+        async function setupFirebase() {
+            AppController.setState('AWAITING_AUTH');
+            if (!firebaseConfig) {
+                console.warn("Firebase config not available. Proceeding without persistence. Ensure security rules are configured if using anonymous auth.");
+                AppController.setState('AUTH_READY');
+                return;
+            }
+            const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, setLogLevel } = window.firebaseImports;
+            setLogLevel('warn'); // Changed from 'Debug' to reduce logs
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    userId = user.uid;
+                    document.getElementById('user-id-display').textContent = `ID: ${userId.substring(0,8)}...`;
+                    AppController.setState('AUTH_READY');
+                } else {
+                    console.log("User is signed out.");
+                }
+            });
+            try {
+                if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken);
+                else await signInAnonymously(auth);
+            } catch (error) { 
+                console.error("Firebase Auth Error:", error); 
+                AppController.setState('ERROR');
+                showInsightModal('Authentication Error', 'Failed to connect to the cosmic archive. Continuing in local mode.');
+            }
+        }
+
+        function setupStateSubscribers() {
+            AppController.onChange((newState) => {
+                if (newState === 'AUTH_READY' && db) {
+                    setupRebirthListener();
+                }
+                const buttons = ['path-button', 'dilemma-button', 'history-button', 'reset-button'];
+                if (newState === 'ACTIVE') {
+                    buttons.forEach(id => document.getElementById(id).disabled = false);
+                } else {
+                    buttons.forEach(id => document.getElementById(id).disabled = true);
+                }
+                // Accessibility: Update aria-hidden for panels
+                const infoPanel = document.getElementById('info-panel');
+                infoPanel.setAttribute('aria-hidden', newState !== 'ACTIVE');
+            });
+        }
+
+        // --- 4. FIREBASE DATA LOGIC (NOW STATE-GATED) ---
+        function setupRebirthListener() {
+            if (!AppController.is('AUTH_READY') || !db) {
+                console.error("Attempted to set up listener before auth was ready.");
+                return;
+            }
+            const docPath = `artifacts/${appId}/users/${userId}/cosmology_state/current_state`;
+            const docRef = window.firebaseImports.doc(db, docPath);
+            window.firebaseImports.onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    rebirthState = { ...docSnap.data(), karmaHistory: docSnap.data().karmaHistory || [] };
+                } else {
+                    window.firebaseImports.setDoc(docRef, { karmaScore: 0, rebirthRealm: 'Humans (Jambu-dvīpa)', karmaHistory: [] });
+                }
+                updateUIStatus();
+                if(AppController.is('AUTH_READY')) {
+                    AppController.setState('ACTIVE');
+                }
+            }, (error) => {
+                console.error("Firestore Listener Error:", error);
+                AppController.setState('ERROR');
+            });
+        }
+        
+        async function updateRebirthState(karmaChange, newRealm, choiceText = null) { 
+            if(!AppController.is('ACTIVE')) return; 
+            if (!db) {
+                // Fallback to local state if no DB
+                rebirthState.karmaScore += karmaChange;
+                rebirthState.rebirthRealm = newRealm;
+                if (choiceText) {
+                    rebirthState.karmaHistory.push({
+                        timestamp: Date.now(),
+                        karmaChange,
+                        newRealm,
+                        choice: choiceText
+                    });
+                }
+                updateUIStatus();
+                return;
+            }
+            const docPath = `artifacts/${appId}/users/${userId}/cosmology_state/current_state`;
+            const docRef = window.firebaseImports.doc(db, docPath);
+            try {
+                await window.firebaseImports.runTransaction(db, async (transaction) => {
+                    const doc = await transaction.get(docRef);
+                    const currentData = doc.exists() ? doc.data() : { karmaScore: 0, karmaHistory: [] };
+                    const newKarma = currentData.karmaScore + karmaChange;
+                    const newHistory = [...currentData.karmaHistory];
+                    if (choiceText) {
+                        newHistory.push({
+                            timestamp: Date.now(),
+                            karmaChange,
+                            newRealm,
+                            choice: choiceText
+                        });
+                    }
+                    transaction.set(docRef, {
+                        karmaScore: newKarma,
+                        rebirthRealm: newRealm,
+                        karmaHistory: newHistory
+                    }, { merge: true });
+                });
+                gsap.to('#karma-status', { scale: 1.3, duration: 0.2, yoyo: true, repeat: 1, color: karmaChange >= 0 ? '#4ade80' : '#f87171' });
+                animateCameraToRealm(newRealm);
+            } catch(e) { 
+                console.error("Transaction failed: ", e); 
+                // Fallback to local
+                rebirthState.karmaScore += karmaChange;
+                rebirthState.rebirthRealm = newRealm;
+                updateUIStatus();
+            }
+        }
+
+        async function resetJourney() {
+            if (!confirm('Are you sure? This will reset your karma score, current realm, and history to begin a new journey.')) return;
+            if (!db) {
+                rebirthState = { karmaScore: 0, rebirthRealm: 'Humans (Jambu-dvīpa)', karmaHistory: [] };
+                updateUIStatus();
+                animateCameraToRealm('Humans (Jambu-dvīpa)');
+                return;
+            }
+            const docPath = `artifacts/${appId}/users/${userId}/cosmology_state/current_state`;
+            const docRef = window.firebaseImports.doc(db, docPath);
+            try {
+                await window.firebaseImports.runTransaction(db, async (transaction) => {
+                    transaction.set(docRef, {
+                        karmaScore: 0,
+                        rebirthRealm: 'Humans (Jambu-dvīpa)',
+                        karmaHistory: []
+                    }, { merge: true });
+                });
+                animateCameraToRealm('Humans (Jambu-dvīpa)');
+            } catch (e) {
+                console.error("Reset failed: ", e);
+                showInsightModal('Error', 'Could not reset journey. Please try again.');
+            }
+        }
+
+        async function fetchKarmaHistory() {
+            let content;
+            if (!db) {
+                const history = rebirthState.karmaHistory || [];
+                if (history.length > 0) {
+                    content = history.map(h => {
+                        const date = new Date(h.timestamp).toLocaleString();
+                        const sign = h.karmaChange >= 0 ? '+' : '';
+                        return `${date}\nChoice: "${h.choice}"\nKarma ${sign}${h.karmaChange} → Reborn: ${h.newRealm}`;
+                    }).join('\n\n---\n\n');
+                } else {
+                    content = 'No karmic events recorded yet. Face dilemmas to build your history and reflect on your path.';
+                }
+                showInsightModal('Karma Journey History', content);
+                return;
+            }
+            const docPath = `artifacts/${appId}/users/${userId}/cosmology_state/current_state`;
+            const docRef = window.firebaseImports.doc(db, docPath);
+            try {
+                const docSnap = await window.firebaseImports.getDoc(docRef);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    const history = data.karmaHistory || [];
+                    if (history.length > 0) {
+                        content = history.map(h => {
+                            const date = new Date(h.timestamp).toLocaleString();
+                            const sign = h.karmaChange >= 0 ? '+' : '';
+                            return `${date}\nChoice: "${h.choice}"\nKarma ${sign}${h.karmaChange} → Reborn: ${h.newRealm}`;
+                        }).join('\n\n---\n\n');
+                    } else {
+                        content = 'No karmic events recorded yet. Face dilemmas to build your history and reflect on your path.';
+                    }
+                } else {
+                    content = 'No journey data available. Begin by facing a dilemma!';
+                }
+                showInsightModal('Karma Journey History', content);
+            } catch (error) {
+                console.error('Error fetching history:', error);
+                showInsightModal('Error', 'Could not retrieve history at this time.');
+            }
+        }
+
+        // --- 5. THREE.JS & VISUALS ---
+        function createStarfield() { 
+            const starGeometry = new THREE.BufferGeometry(); 
+            const starVertices = []; 
+            for(let i = 0; i < 5000; i++) { // Reduced from 10000 for performance
+                starVertices.push(THREE.MathUtils.randFloatSpread(2000), THREE.MathUtils.randFloatSpread(2000), THREE.MathUtils.randFloatSpread(2000)); 
+            } 
+            starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3)); 
+            const starMaterial = new THREE.PointsMaterial({ color: 0xadb9c9, size: 0.5 }); // Reduced size
+            scene.add(new THREE.Points(starGeometry, starMaterial)); 
+        }
+        function createCosmology() { 
+            COSMOLOGY.forEach(data => { 
+                let mesh; 
+                if (data.isMeru) { 
+                    const geom = new THREE.CylinderGeometry(data.radius * 0.2, data.radius * 1.5, 150, 16); // Reduced segments for performance
+                    mesh = new THREE.Mesh(geom, new THREE.MeshPhongMaterial({ color: data.color, shininess: 50, emissive: 0x111111 })); 
+                } else { 
+                    const geom = new THREE.SphereGeometry(data.radius, 16, 16); // Reduced segments
+                    mesh = new THREE.Mesh(geom, new THREE.MeshPhongMaterial({ color: data.color, transparent: true, opacity: 0.7, shininess: 100, emissive: data.color, emissiveIntensity: 0.1 })); 
+                    realms.push(mesh); 
+                } 
+                mesh.position.copy(data.position || new THREE.Vector3()); 
+                mesh.userData = data; 
+                controls.target.add(mesh); 
+            }); 
+        }
+        function setupEnhancedOrbitControls(camera, domElement) { 
+            const targetGroup = new THREE.Group(); 
+            let isDragging = false, isTransitioning = false, radius = 100; 
+            let previousPointer = { x: 0, y: 0 }, velocity = { x: 0, y: 0 }; 
+            const minRadius = 40, maxRadius = 300; 
+            function onPointerDown(e) { 
+                if (isTransitioning) return; 
+                isDragging = true; 
+                const p = e.touches ? e.touches[0] : e; 
+                previousPointer = { x: p.clientX, y: p.clientY }; 
+                velocity = { x: 0, y: 0 }; 
+                domElement.style.cursor = 'grabbing'; 
+            } 
+            function onPointerMove(e) { 
+                if (!isDragging || isTransitioning) return; 
+                const p = e.touches ? e.touches[0] : e; 
+                const deltaX = p.clientX - previousPointer.x, deltaY = p.clientY - previousPointer.y; 
+                targetGroup.rotation.y += deltaX * 0.005; 
+                targetGroup.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, targetGroup.rotation.x + deltaY * 0.005)); 
+                velocity = { x: deltaX * 0.005, y: deltaY * 0.005 }; 
+                previousPointer = { x: p.clientX, y: p.clientY }; 
+            } 
+            function onPointerUp() { 
+                isDragging = false; 
+                domElement.style.cursor = 'grab'; 
+            } 
+            function onWheel(e) { 
+                if (isTransitioning) return; 
+                radius = Math.max(minRadius, Math.min(maxRadius, radius - e.deltaY * 0.1)); // Standard zoom direction
+            } 
+            ['mousedown', 'touchstart'].forEach(evt => domElement.addEventListener(evt, onPointerDown)); 
+            ['mousemove', 'touchmove'].forEach(evt => domElement.addEventListener(evt, onPointerMove)); 
+            ['mouseup', 'mouseleave', 'touchend'].forEach(evt => domElement.addEventListener(evt, onPointerUp)); 
+            domElement.addEventListener('wheel', onWheel); 
+            function update() { 
+                if (!isDragging && !isTransitioning) { 
+                    targetGroup.rotation.y += velocity.x; 
+                    targetGroup.rotation.x += velocity.y; 
+                    velocity.x *= 0.95; 
+                    velocity.y *= 0.95; 
+                } 
+                camera.position.set(0, 0, radius); 
+                camera.lookAt(targetGroup.position); 
+            } 
+            return { target: targetGroup, update, setTransition: (state) => isTransitioning = state, radius }; // Expose radius for keyboard
+        }
+        function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
+        function onWindowResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
+
+        // --- 6. INTERACTION & LLM ---
+        async function onInteract(event) { 
+            if (event.type === 'touchend') event.preventDefault(); 
+            const rect = renderer.domElement.getBoundingClientRect(); 
+            const p = event.changedTouches ? event.changedTouches[0] : event; 
+            mouse.x = ((p.clientX - rect.left) / rect.width) * 2 - 1; 
+            mouse.y = -((p.clientY - rect.top) / rect.height) * 2 + 1; 
+            raycaster.setFromCamera(mouse, camera); 
+            const intersects = raycaster.intersectObjects(realms); 
+            if (intersects.length > 0) { 
+                const selected = intersects[0].object; 
+                displayInfo(selected.userData); 
+                fetchRealmDetails(selected.userData.name); 
+                gsap.to(selected.scale, { duration: 0.5, x: 1.2, y: 1.2, z: 1.2, ease: "elastic.out(1, 0.3)" }); 
+                realms.forEach(r => { if (r !== selected) gsap.to(r.scale, { duration: 0.5, x: 1, y: 1, z: 1 }); }); 
+            } 
+        }
+        function displayInfo(data, details = null) { 
+            const panel = document.getElementById('info-panel'); 
+            document.getElementById('realm-name').textContent = data.name; 
+            let content = `<p class="text-sm italic text-slate-400 mb-3">${data.description}</p>`; 
+            const oldMeditationButton = document.getElementById('meditation-button'); 
+            if (oldMeditationButton) oldMeditationButton.remove(); 
+            if (details) { 
+                content += `<div class="space-y-3"><div><strong>Description:</strong><p class="mt-1">${details.description}</p></div><div><strong>Challenges:</strong><p class="mt-1">${details.challenges}</p></div><div><strong>Path to Transcendence:</strong><p class="mt-1">${details.transcendence}</p></div></div>`; 
+                if (details.source) content += `<a href="${details.source.uri}" target="_blank" rel="noopener noreferrer" class="gemini-source">Source: ${details.source.title}</a>`; 
+            } else { 
+                content += `<p class="mt-2 text-blue-400 flex items-center gap-2"><span class="loading-spinner"></span>Fetching grounded details...</p>`; 
+            } 
+            document.getElementById('realm-description').innerHTML = content; 
+            if (details) { 
+                const meditationButton = document.createElement('button'); 
+                meditationButton.id = 'meditation-button'; 
+                meditationButton.className = 'action-button w-full mt-4 p-3 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2'; 
+                meditationButton.innerHTML = `<span>✨ Generate Guided Meditation</span>`; 
+                meditationButton.setAttribute('aria-describedby', 'meditation-desc'); 
+                meditationButton.onclick = () => fetchGuidedMeditation(data.name, meditationButton); 
+                panel.appendChild(meditationButton); 
+                const desc = document.createElement('p'); 
+                desc.id = 'meditation-desc'; 
+                desc.className = 'sr-only'; 
+                desc.textContent = 'Generate a guided meditation script focused on this realm.'; 
+                panel.appendChild(desc); 
+            } 
+            panel.classList.add('visible'); 
+            panel.setAttribute('aria-hidden', 'false'); // Accessibility
+        }
+        async function fetchWithRetry(url, options, retries = 3, delay = 1000) { 
+            for (let i = 0; i < retries; i++) { 
+                try { 
+                    const response = await fetch(url, options); 
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`); 
+                    return await response.json(); 
+                } catch (error) { 
+                    console.error(`Attempt ${i + 1} failed:`, error); 
+                    if (i === retries - 1) throw error; 
+                    await new Promise(res => setTimeout(res, delay * Math.pow(2, i))); 
+                } 
+            } 
+        }
+        
+        async function fetchRealmDetails(realmName) {
+            if (!API_KEY) {
+                document.getElementById('realm-description').innerHTML += `<p class="mt-2 text-red-400">API key required for detailed insights.</p>`;
+                return;
+            }
+            const systemPrompt = `You are a Buddhist scholar providing academic, grounded information. Generate a structured summary for the Buddhist realm provided, focusing on its nature and the experiences of its inhabitants. Include: description (a detailed paragraph on its nature), challenges (key difficulties faced by inhabitants, formatted as bullet points in a string), transcendence (practical Buddhist advice for moving beyond this realm). Your response MUST be valid JSON.`;
+            const payload = { 
+                contents: [{ parts: [{ text: `Provide a summary of the Buddhist plane of existence: ${realmName}.` }] }], 
+                tools: [{ "google_search": {} }], 
+                systemInstruction: { parts: [{ text: systemPrompt }] }, 
+                generationConfig: { 
+                    responseMimeType: "application/json", 
+                    responseSchema: { 
+                        type: "object", 
+                        properties: { 
+                            "description": { "type": "string" }, 
+                            "challenges": { "type": "string" }, 
+                            "transcendence": { "type": "string" } 
+                        } 
+                    } 
+                } 
+            };
+            try {
+                const result = await fetchWithRetry(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const candidate = result.candidates?.[0];
+                if (!candidate) throw new Error("No candidate in response.");
+                let details;
+                try {
+                    details = JSON.parse(candidate.content.parts[0].text);
+                } catch (parseError) {
+                    console.error("JSON Parse Error:", parseError);
+                    throw new Error("Invalid response format from API.");
+                }
+                details.source = candidate.groundingMetadata?.groundingAttributions?.[0]?.web;
+                const originalData = COSMOLOGY.find(d => d.name === realmName);
+                if (originalData) displayInfo(originalData, details);
+            } catch (error) {
+                console.error("LLM API Error:", error);
+                let errorText = 'Failed to load details.';
+                if (error.message && error.message.includes('401')) {
+                    errorText = 'Authentication error. Please check API key.';
+                }
+                document.getElementById('realm-description').innerHTML += `<p class="mt-2 text-red-400">${errorText}</p>`;
+            }
+        }
+
+        async function fetchGuidedMeditation(realmName, button) {
+            if (!API_KEY) {
+                showInsightModal('Error', 'API key required for guided meditations.');
+                return;
+            }
+            button.disabled = true;
+            button.innerHTML = `<div class="loading-spinner"></div><span>Generating...</span>`;
+            const systemPrompt = `You are a meditation guide. Generate a short, 2-paragraph guided meditation script. The meditation should focus on understanding and transcending the core challenges or nature of the "${realmName}". For example, for "Preta (Hungry Ghosts)", focus on craving and release. For "Devas (Gods)", focus on impermanence and attachment to bliss. The tone must be calm, clear, and soothing.`;
+            const payload = { contents: [{ parts: [{ text: `Generate the meditation script for the ${realmName}.` }] }], systemInstruction: { parts: [{ text: systemPrompt }] } };
+            try {
+                const result = await fetchWithRetry(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const text = result.candidates[0].content.parts[0].text;
+                showInsightModal(`Meditation for the ${realmName}`, text);
+            } catch (error) {
+                console.error("Meditation Generation Error:", error);
+                let content = 'Could not generate the meditation script at this time.';
+                if (error.message && error.message.includes('401')) {
+                    content = 'Could not connect to the meditation guide (Authentication Error). Please check your API key configuration.';
+                }
+                showInsightModal('Error', content);
+            } finally {
+                button.disabled = false;
+                button.innerHTML = `<span>✨ Generate Guided Meditation</span>`;
+            }
+        }
+
+        async function fetchPersonalPath() {
+            if (!AppController.is('ACTIVE')) return;
+            if (!API_KEY) {
+                showInsightModal('Error', 'API key required for personal path guidance.');
+                return;
+            }
+            const button = document.getElementById('path-button');
+            const spinner = document.getElementById('path-spinner');
+            const buttonText = document.getElementById('path-button-text');
+            button.disabled = true; spinner.classList.remove('hidden'); buttonText.textContent = 'Consulting the Path...';
+            const systemPrompt = `You are a wise Buddhist advisor. Based on the user's current karma score and rebirth realm, provide a short, encouraging piece of advice (2-3 sentences). Focus on a practical action or mindset they can cultivate to improve their path. The tone should be insightful and compassionate.`;
+            const payload = { contents: [{ parts: [{ text: `My current karma is ${rebirthState.karmaScore} and my projected realm is ${rebirthState.rebirthRealm}. What should I focus on?` }] }], systemInstruction: { parts: [{ text: systemPrompt }] } };
+            try {
+                const result = await fetchWithRetry(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const text = result.candidates[0].content.parts[0].text;
+                showInsightModal('Your Personal Path', text);
+            } catch (error) {
+                console.error("Personal Path Error:", error);
+                let content = 'Could not determine your path at this time.';
+                if (error.message && error.message.includes('401')) {
+                    content = 'Could not consult the path (Authentication Error). Please check your API key configuration.';
+                }
+                showInsightModal('Error', content);
+            } finally {
+                button.disabled = false; spinner.classList.add('hidden'); buttonText.textContent = '✨ Get Personal Path';
+            }
+        }
+
+        async function fetchKarmicDilemma() {
+            if (!AppController.is('ACTIVE')) return;
+            if (!API_KEY) {
+                showInsightModal('Error', 'API key required for karmic dilemmas.');
+                return;
+            }
+            const button = document.getElementById('dilemma-button');
+            const spinner = document.getElementById('dilemma-spinner');
+            const buttonText = document.getElementById('dilemma-button-text');
+            button.disabled = true; spinner.classList.remove('hidden'); buttonText.textContent = 'Awaiting Fate...';
+            const systemPrompt = `You are a Dharma teacher creating a moral dilemma based on Buddhist principles for a student currently in the realm of "${rebirthState.rebirthRealm}". Generate a brief, one-sentence scenario and three distinct choices. Each choice must have a text description, an integer karma value (positive, negative, or zero), and a realmHint (a likely destination realm from the list: Devas, Asuras, Humans, Animals, Preta, Narakas). Your response must be valid JSON.`;
+            const payload = { 
+                contents: [{ parts: [{ text: `Generate a karmic dilemma.` }] }], 
+                systemInstruction: { parts: [{ text: systemPrompt }] }, 
+                generationConfig: { 
+                    responseMimeType: "application/json", 
+                    responseSchema: { 
+                        type: "object", 
+                        properties: { 
+                            "dilemma": { "type": "string" }, 
+                            "choices": { 
+                                "type": "array", 
+                                "items": { 
+                                    "type": "object", 
+                                    "properties": { 
+                                        "text": { "type": "string" }, 
+                                        "karma": { "type": "integer" }, 
+                                        "realmHint": { "type": "string" } 
+                                    } 
+                                } 
+                            } 
+                        } 
+                    } 
+                } 
+            };
+            try {
+                const result = await fetchWithRetry(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                let dilemmaData;
+                try {
+                    dilemmaData = JSON.parse(result.candidates[0].content.parts[0].text);
+                } catch (parseError) {
+                    console.error("JSON Parse Error:", parseError);
+                    throw new Error("Invalid response format from API.");
+                }
+                populateDilemmaModal(dilemmaData);
+            } catch (error) {
+                console.error("Dilemma Generation Error:", error);
+                let dilemmaText = "A cosmic interference has occurred. Your path is momentarily unclear.";
+                if (error.message && error.message.includes('401')) {
+                    dilemmaText = "Could not connect to the cosmic source (Authentication Error). Please check your API key configuration.";
+                }
+                populateDilemmaModal({ dilemma: dilemmaText, choices: [{ text: "Acknowledge", karma: 0, realmHint: "Humans" }] });
+            } finally {
+                button.disabled = false; spinner.classList.add('hidden'); buttonText.textContent = 'Face a Karmic Dilemma';
+            }
+        }
+
+        // --- 7. UI & MODALS ---
+        function populateDilemmaModal(data) {
+            const modal = document.getElementById('dilemma-modal');
+            const choicesContainer = document.getElementById('dilemma-choices');
+            choicesContainer.innerHTML = '';
+            
+            // Defensive check to prevent crash on malformed data
+            if (!data || !Array.isArray(data.choices)) {
+                console.error("Invalid data passed to populateDilemmaModal:", data);
+                document.getElementById('dilemma-text').textContent = data.dilemma || "A cosmic interference has occurred. Your path is momentarily unclear.";
+                const fallbackChoice = { text: "Acknowledge", karma: 0, realmHint: "Humans" };
+                data = { choices: [fallbackChoice] };
+            }
+            
+            document.getElementById('dilemma-text').textContent = data.dilemma;
+
+            data.choices.forEach((choice, index) => {
+                const button = document.createElement('button');
+                button.className = 'action-button w-full p-3 bg-slate-800 hover:bg-slate-700 rounded-lg text-left';
+                button.textContent = choice.text;
+                button.setAttribute('role', 'radio');
+                button.setAttribute('aria-checked', 'false');
+                button.onclick = () => {
+                    // Set all to unchecked
+                    choicesContainer.querySelectorAll('button[role="radio"]').forEach(b => b.setAttribute('aria-checked', 'false'));
+                    button.setAttribute('aria-checked', 'true');
+                    const targetRealm = COSMOLOGY.find(r => r.name.includes(choice.realmHint))?.name || "Humans (Jambu-dvīpa)";
+                    updateRebirthState(choice.karma, targetRealm, choice.text);
+                    modal.classList.add('hidden');
+                };
+                choicesContainer.appendChild(button);
+            });
+            modal.classList.remove('hidden');
+        }
+
+        function showInsightModal(title, content) { 
+            document.getElementById('insight-title').textContent = title; 
+            document.getElementById('insight-content').textContent = content; 
+            document.getElementById('insight-modal').classList.remove('hidden'); 
+        }
+        document.getElementById('dilemma-button').addEventListener('click', fetchKarmicDilemma);
+        document.getElementById('path-button').addEventListener('click', fetchPersonalPath);
+        document.getElementById('history-button').addEventListener('click', fetchKarmaHistory);
+        document.getElementById('reset-button').addEventListener('click', resetJourney);
+        document.getElementById('close-dilemma-modal-button').addEventListener('click', () => document.getElementById('dilemma-modal').classList.add('hidden'));
+        document.getElementById('close-insight-modal-button').addEventListener('click', () => document.getElementById('insight-modal').classList.add('hidden'));
+        function updateUIStatus() { 
+            document.getElementById('realm-status').textContent = rebirthState.rebirthRealm; 
+            document.getElementById('karma-status').textContent = rebirthState.karmaScore; 
+        }
+        function animateCameraToRealm(realmName) { 
+            const targetRealm = controls.target.children.find(c => c.userData.name === realmName); 
+            if (!targetRealm) return; 
+            controls.setTransition(true); 
+            const worldPosition = new THREE.Vector3(); 
+            targetRealm.getWorldPosition(worldPosition); 
+            const spherical = new THREE.Spherical().setFromVector3(worldPosition); 
+            gsap.to(controls.target.rotation, { 
+                duration: 2.5, 
+                y: -spherical.theta, 
+                x: -spherical.phi + Math.PI / 2, 
+                ease: "power3.inOut", 
+                onComplete: () => controls.setTransition(false) 
+            }); 
+        }
+    </script>
+</body>
+</html>
