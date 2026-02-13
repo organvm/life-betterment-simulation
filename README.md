@@ -1,5 +1,13 @@
 # Life Betterment Simulation
 
+[![CI](https://github.com/organvm-ii-poiesis/life-betterment-simulation/actions/workflows/ci.yml/badge.svg)](https://github.com/organvm-ii-poiesis/life-betterment-simulation/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-pending-lightgrey)](https://github.com/organvm-ii-poiesis/life-betterment-simulation)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/organvm-ii-poiesis/life-betterment-simulation/blob/main/LICENSE)
+[![Organ II](https://img.shields.io/badge/Organ-II%20Poiesis-EC4899)](https://github.com/organvm-ii-poiesis)
+[![Status](https://img.shields.io/badge/status-active-brightgreen)](https://github.com/organvm-ii-poiesis/life-betterment-simulation)
+[![Python](https://img.shields.io/badge/lang-Python-informational)](https://github.com/organvm-ii-poiesis/life-betterment-simulation)
+
+
 [![CI](https://github.com/organvm-ii-poiesis/life-betterment-simulation/actions/workflows/ci-minimal.yml/badge.svg)](https://github.com/organvm-ii-poiesis/life-betterment-simulation/actions)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 [![ORGAN-II: Art](https://img.shields.io/badge/ORGAN--II-Art-6a1b9a?style=flat-square)](https://github.com/organvm-ii-poiesis)
