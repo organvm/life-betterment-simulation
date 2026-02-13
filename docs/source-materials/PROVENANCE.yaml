@@ -1,0 +1,106 @@
+schema_version: '1.0'
+repo: life-betterment-simulation
+org: organvm-ii-poiesis
+generated: '2026-02-13T03:33:56.181469+00:00'
+total_materials: 12
+materials:
+- filename: easterncosmos-v.html
+  source_path: /Users/4jp/Workspace/life-betterment-simulation/easterncosmos-v.html
+  sha256: 907fe260c8a71d80f598054def293ae405dd77d6ec8565e75bb71abb700d3f3f
+  size_bytes: 46370
+  last_modified: '2025-10-14T21:12:12+00:00'
+  classification_rule: direct_repo_match
+  confidence: 1.0
+  target_subdir: docs/source-materials/prototypes/
+- filename: conversation-topics-across-social-and-professional-contexts.pdf
+  source_path: /Users/4jp/Workspace/life-betterment-simulation/conversation-topics-across-social-and-professional-contexts.pdf
+  sha256: ae5198075516cd31e604195485082eeddcb7665d33e714d246ca9d0f27ecb0f4
+  size_bytes: 151336
+  last_modified: '2025-10-26T19:27:07+00:00'
+  classification_rule: direct_repo_match
+  confidence: 1.0
+  target_subdir: docs/source-materials/research/
+- filename: NSFW Dating Sim Design Prompt.docx
+  source_path: /Users/4jp/Workspace/life-betterment-simulation/NSFW Dating Sim Design
+    Prompt.docx
+  sha256: 893a6a39ef8a09fa539c0fdf14a8c8b910d6839315f8b26531b982209d89c7b8
+  size_bytes: 25573
+  last_modified: '2025-10-21T01:31:56+00:00'
+  classification_rule: direct_repo_match
+  confidence: 1.0
+  target_subdir: docs/source-materials/theory/
+- filename: friend-zone_contagion_v1.8.html
+  source_path: /Users/4jp/Workspace/life-betterment-simulation/friend-zone_contagion_v1.8.html
+  sha256: ae33ddc31b81112819ce4b2a21e2e2012dea4a85f3a7c2a6c112f33965362bcc
+  size_bytes: 37896
+  last_modified: '2025-07-06T18:30:03+00:00'
+  classification_rule: direct_repo_match
+  confidence: 1.0
+  target_subdir: docs/source-materials/prototypes/
+- filename: Siddhartha 30-Day Guided Journal.docx
+  source_path: /Users/4jp/Workspace/life-betterment-simulation/Siddhartha 30-Day Guided
+    Journal.docx
+  sha256: 171f95544ee5c534a51c9955704801f5dcb9a275bf9da1d2405a8a5e2ebe6b83
+  size_bytes: 23180
+  last_modified: '2025-09-17T16:12:04+00:00'
+  classification_rule: direct_repo_match
+  confidence: 1.0
+  target_subdir: docs/source-materials/theory/
+- filename: designing-future-dating-sim-prompts.pdf
+  source_path: /Users/4jp/Workspace/life-betterment-simulation/designing-future-dating-sim-prompts.pdf
+  sha256: 9ed98f32951fea761eba354d492c5fb95f4c2da91deac16591f5e71824db4463
+  size_bytes: 265946
+  last_modified: '2025-11-06T22:55:24+00:00'
+  classification_rule: direct_repo_match
+  confidence: 1.0
+  target_subdir: docs/source-materials/research/
+- filename: nsfw-dating-sim-design-prompt.docx
+  source_path: /Users/4jp/Workspace/life-betterment-simulation/nsfw-dating-sim-design-prompt.docx
+  sha256: 893a6a39ef8a09fa539c0fdf14a8c8b910d6839315f8b26531b982209d89c7b8
+  size_bytes: 25573
+  last_modified: '2025-10-21T01:31:56+00:00'
+  classification_rule: direct_repo_match
+  confidence: 1.0
+  target_subdir: docs/source-materials/theory/
+- filename: Human Design Schedule Mapping.txt
+  source_path: /Users/4jp/Workspace/life-betterment-simulation/Human Design Schedule
+    Mapping.txt
+  sha256: 7232f1c6a48db7b7f857cc17ef32f101b8ffe15e0c828a43143978fe7c8bee30
+  size_bytes: 61034
+  last_modified: '2025-08-19T08:46:58+00:00'
+  classification_rule: direct_repo_match
+  confidence: 1.0
+  target_subdir: docs/source-materials/theory/
+- filename: easterncosmos-vv.html
+  source_path: /Users/4jp/Workspace/life-betterment-simulation/easterncosmos-vv.html
+  sha256: c3196963ee8603260d14bf7760febd8459cdac5d57c8b5b3518c421d19099dd0
+  size_bytes: 21168
+  last_modified: '2025-10-29T06:55:51+00:00'
+  classification_rule: direct_repo_match
+  confidence: 1.0
+  target_subdir: docs/source-materials/prototypes/
+- filename: designing-future-dating-sim-prompts.docx
+  source_path: /Users/4jp/Workspace/life-betterment-simulation/designing-future-dating-sim-prompts.docx
+  sha256: 9b8c2fff4bca7d48b7f2ee864305d48330fafa69fdd63479841ae01349390113
+  size_bytes: 27574
+  last_modified: '2025-10-21T00:44:43+00:00'
+  classification_rule: direct_repo_match
+  confidence: 1.0
+  target_subdir: docs/source-materials/theory/
+- filename: animating-a-spiral-shape-for-web-2.md
+  source_path: /Users/4jp/Workspace/life-betterment-simulation/animating-a-spiral-shape-for-web-2.md
+  sha256: ace9a11682c907b5ee8728f3237763a75fc2eb7d1cb017d927f3988c4f2ffa25
+  size_bytes: 25237
+  last_modified: '2025-08-20T15:56:27+00:00'
+  classification_rule: direct_repo_match
+  confidence: 1.0
+  target_subdir: docs/source-materials/theory/
+- filename: '"The Social Influence Theory_ Beyond the Five" | Shared Grok Conversation.md'
+  source_path: /Users/4jp/Workspace/life-betterment-simulation/"The Social Influence
+    Theory_ Beyond the Five" | Shared Grok Conversation.md
+  sha256: be2561e57d8611d9843d5e29069990a3925a34fe720567d32f5c37b780f92a05
+  size_bytes: 26251
+  last_modified: '2025-07-05T17:58:30+00:00'
+  classification_rule: direct_repo_match
+  confidence: 1.0
+  target_subdir: docs/source-materials/theory/
