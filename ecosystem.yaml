@@ -1,0 +1,8 @@
+schema_version: '1.0'
+repo: life-betterment-simulation
+organ: II
+display_name: Interactive simulation exploring social influence theory, dating dynamics,
+  and personal growth through experiential narrative design
+delivery:
+- platform: web_app
+  status: not_started
