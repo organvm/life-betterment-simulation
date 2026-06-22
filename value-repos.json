@@ -1,0 +1,14 @@
+{
+  "schema": "value-repos/v1",
+  "description": "Repos discovered to hold real, ranked latent value. Build-out follows promotion.",
+  "repos": [
+    {
+      "repo": "organvm/life-betterment-simulation",
+      "organ": "II",
+      "promoted": "2026-06-22",
+      "thesis": "Working LLM-powered Social Influence Simulator (Gemini) + reusable AI social-dynamics coach / network-contagion engine and Three.js cosmology visualizations. Deployable consumer product and reusable estate asset; productization path to ORGAN-III.",
+      "first_task": "Promote friend-zone_contagion_v1.8.html to a deployable index.html with a documented Gemini API-key config path; ship as a static demo.",
+      "discovery": "DISCOVERY.md"
+    }
+  ]
+}
